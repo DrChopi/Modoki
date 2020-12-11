@@ -1,0 +1,17 @@
+version : "3.8"
+services :
+  bot :
+    image : node:latest
+    ports :
+      - "3000:3000"
+    volumes :
+      - .:/app
+    links :
+      - redis
+    working_dir: /app
+    command : "npm i && npm start"
+  redis :
+    image : redis:latest
+    volumes :
+      - ./data:/data
+    command : "redis-server --appendonly yes"
