@@ -12,7 +12,7 @@ const Discord = new Client(),
 
 env.config()
       
-const FEEDS_REFRESH = 10 // minutes
+const FEEDS_REFRESH = 1 // minutes
 const CLIENT_ID = process.env.CLIENT_ID
 const HELP = fs.readFileSync('README.md', {encoding:'utf8', flag:'r'})
 const PROVERBS = fs.readFileSync('proverbs.txt', {encoding:'utf8', flag:'r'}).split('\n')
@@ -25,37 +25,42 @@ Map.prototype.get_channel = function ( name ) {
 }
 
 const rng = (min, max) => Math.floor(Math.random() * 1000 * max)%max + min
-const fd_parser = (data) => {
-    var d = {}
-    if ( Object.keys(data) == "rdf:RDF" ) {
-        d.title = data["rdf:RDF"].channel.title
-        d.item = data["rdf:RDF"].item
-    } else {
-        d.title = data.rss.channel.title
-        d.item = data.rss.channel.item
-    } return d
+const fd_parser = (data, fd) => {
+    try {
+        var d = {}
+        if ( Object.keys(data) == "rdf:RDF" ) {
+            d.title = data["rdf:RDF"].channel.title
+            d.item = data["rdf:RDF"].item
+        } else {
+            d.title = data.rss.channel.title
+            d.item = data.rss.channel.item
+        } return d
+    } catch (e) { console.error(e, fd, data) }
 }
 const fds = () => {
-    for ( let guild of Discord.guilds.cache ) {
-        Redis.get(`${guild[1].name}/feeds` , function(err, reply) {
-            if ( err ) throw new Error(err);
-            let fds = reply == null ? {} : JSON.parse(reply);
-            for ( let i = 0 ; i < fds.feeds.length ; i++ ) {
-                fetch(fds.feeds[i])
-                    .then(res => res.text())
-                    .then(body => {
-                        let data = fd_parser(fxp.parse(body, {}))
-                        if ( new Date(data.item[0].pubDate) > UP )
-                            for ( let j = 0 ; j < data.item.length ; j++ )
+    try {
+        for ( let guild of Discord.guilds.cache ) {
+            Redis.get(`${guild[1].name}/feeds` , function(err, reply) {
+                if ( err ) throw new Error(err);
+                let fds = reply == null ? {} : JSON.parse(reply);
+                for ( let i = 0 ; i < fds.feeds.length ; i++ ) {
+                    fetch(fds.feeds[i])
+                        .then(res => res.text())
+                        .then(body => {
+                            if ( body ) {
+                                var data = fd_parser(fxp.parse(body, {}), fds.feeds[i])
+                                for ( let j = 0 ; j < data.item.length ; j++ )
+                                if ( new Date(data.item[j].pubDate) > UP )
                                 for ( let x = 0 ; x < fds.channels.length ; x++ )
-                                    guild[1].channels.cache.get_channel(fds.channels[x]).messages.channel
-                                    .send(`☄️  **${ data.title }  |  ${ Ent.decode(data.item[j].title) }**\n\n${ data.item[j].link }`)
-                    })
-            }
-        });
-    } UP = new Date()
+                                guild[1].channels.cache.get_channel(fds.channels[x]).messages.channel
+                                .send(`☄️  **${ data.title }  |  ${ Ent.decode(data.item[j].title) }**\n\n${ data.item[j].link }`)
+                            }
+                        })
+                }
+            });
+        } UP = new Date()
+    } catch (e) { console.error(e, data) }
 }
-
 const filter = {
     add : (args, msg) => {
         Redis.get(`${msg.guild.name}/filters` , function(err, reply) {
@@ -89,6 +94,14 @@ const filter = {
             for ( let i in filters ) res += i + ' => ' + filters[i] + '\n';
             msg.channel.send(`\`\`\`${ res }\`\`\``)
         })
+    }
+}
+const markov = {
+    add : () => {
+
+    },
+    get : () => {
+
     }
 }
 
@@ -188,6 +201,7 @@ function parse (msg) {
             case '!help':
                 msg.channel.send(HELP); break;
             default :
+                markov.add(msg.content)
                 Redis.get(`${msg.guild.name}/filters` , function(err, reply) {
                     if ( err ) throw new Error(err);
                     let base = msg.content,
@@ -205,7 +219,7 @@ function parse (msg) {
                         msg.delete()
                     }
                 });
-                if ( msg.mentions.users.find(el => process.env.NAME == el.username) ) msg.channel.send('Random message');
+                if ( msg.mentions.users.find(el => process.env.NAME == el.username) ) msg.channel.send(markov.get());
                 break;
         }
     } catch ( e ) { 
