@@ -9,7 +9,7 @@ services :
     links :
       - redis
     working_dir: /app
-    command : "npm i && npm start"
+    command : "npm start"
   redis :
     image : redis:latest
     volumes :
