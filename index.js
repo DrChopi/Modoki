@@ -1,10 +1,10 @@
-import fs, { mkdirSync } from 'fs'
-import env from 'dotenv'
-import { Client } from 'discord.js'
-import { createClient } from 'redis'
-import fetch from 'node-fetch'
-import fxp from 'fast-xml-parser'
-import { XmlEntities } from 'html-entities'
+const fs = require('fs'), { mkdirSync } = fs,
+      env = require('dotenv'),
+      { Client } = require('discord.js'),
+      { createClient } = require('redis'),
+      fetch = require('node-fetch'),
+      fxp = require('fast-xml-parser'),
+      { XmlEntities } = require('html-entities')
 
 const Discord = new Client(),
       Redis = createClient({ host : "redis" }),
@@ -227,6 +227,7 @@ function parse (msg) {
         msg.channel.send(`\`❌ I can\'t do this !\``) }
 }
 
+// Rich presence + periodical checks
 Discord.on('ready', () => {
     console.log(`Logged in as ${Discord.user.tag}!`)
     //console.log(Discord.guilds.cache)
