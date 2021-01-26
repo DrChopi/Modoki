@@ -19,7 +19,6 @@ Commands:
             channel_remove "channels"      Remove one or more channel of list
             list                           List all feeds
             list_channels                  List all channels
-            refresh                        Manually check all feeds
 
         citation    Add/List/Remove citation to list
         Options:

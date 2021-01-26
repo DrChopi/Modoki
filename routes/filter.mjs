@@ -1,6 +1,6 @@
 export default class Filter {
 
-        add (args, msg) {
+        add (args, msg, Redis) {
             Redis.get(`${msg.guild.name}/filters` , function(err, reply) {
                 if ( err ) throw new Error(err);
                 let filters = reply == null ? {} : JSON.parse(reply); 
@@ -9,7 +9,7 @@ export default class Filter {
             }); msg.channel.send(`\`Add filter ${ args[0] } => ${ args[2] }\``)
         }
 
-        edit (args, msg) {
+        edit (args, msg, Redis) {
             Redis.get(`${msg.guild.name}/filters` , function(err, reply) {
                 if ( err ) throw new Error(err);
                 let filters = reply == null ? {} : JSON.parse(reply); 
@@ -18,7 +18,7 @@ export default class Filter {
             }); msg.channel.send(`\`Edit filter ${ args[0] } => ${ args[2] }\``)
         }
 
-        remove (args, msg) {
+        remove (args, msg, Redis) {
             Redis.get(`${msg.guild.name}/filters` , function(err, reply) {
                 if ( err ) throw new Error(err);
                 let filters = reply == null ? {} : JSON.parse(reply); 
@@ -27,7 +27,7 @@ export default class Filter {
             }); msg.channel.send(`\`Remove filter ${ args[0] }\``)
         }
 
-        list (args, msg) {
+        list (args, msg, Redis) {
             Redis.get(`${msg.guild.name}/filters` , function(err, reply) {
                 let res = ""
                 if ( err ) throw new Error(err);

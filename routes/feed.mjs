@@ -1,4 +1,14 @@
+import fetch from 'node-fetch'
+
+Map.prototype.get_channel = function ( name ) {
+    for ( let el of this ) {
+        if ( el[1].name == name  ) return el[1];
+    } ; return null
+}
+
 export default class Feeds {
+    constructor () { this.date = new Date() }
+
     fd_parser (data, fd) {
         try {
             var d = {}
@@ -12,41 +22,55 @@ export default class Feeds {
         } catch (e) { console.error(e, fd, data) }
     }
 
-    fds () {
+    fds (Discord, Redis, Ent, fxp) {
+        var data;
         try {
             for ( let guild of Discord.guilds.cache ) {
-                Redis.get(`${guild[1].name}/feeds` , function(err, reply) {
+                Redis.get(`${guild[1].name}/feeds` , (err, reply) => {
                     if ( err ) throw new Error(err);
-                    let fds = reply == null ? {} : JSON.parse(reply);
+                    let fds = reply == null ? { feeds : [], channels : [] } : JSON.parse(reply);
                     for ( let i = 0 ; i < fds.feeds.length ; i++ ) {
                         fetch(fds.feeds[i])
                             .then(res => res.text())
                             .then(body => {
                                 if ( body ) {
-                                    var data = fd_parser(fxp.parse(body, {}), fds.feeds[i])
+                                    data = this.fd_parser(fxp.parse(body, {}), fds.feeds[i])
                                     for ( let j = 0 ; j < data.item.length ; j++ )
-                                    if ( new Date(data.item[j].pubDate) > UP )
-                                    for ( let x = 0 ; x < fds.channels.length ; x++ )
-                                    guild[1].channels.cache.get_channel(fds.channels[x]).messages.channel
-                                    .send(`☄️  **${ data.title }  |  ${ Ent.decode(data.item[j].title) }**\n\n${ data.item[j].link }`)
+                                    if ( new Date(data.item[j].pubDate) > this.date )
+                                        for ( let x = 0 ; x < fds.channels.length ; x++ )
+                                            guild[1].channels.cache.get_channel(fds.channels[x]).messages.channel
+                                                .send(`☄️  **${ data.title }  |  ${ Ent.decode(data.item[j].title) }**\n\n${ data.item[j].link }`)
                                 }
                             })
                     }
                 });
-            } UP = new Date()
-        } catch (e) { console.error(e, data) }
+            } this.date = new Date()
+        } catch (e) { 
+            if (data) console.error(data);
+            console.error(e)
+        }
     }
 
-    add ( args, msg )  {
-        Redis.get(`${msg.guild.name}/feeds` , function(err, reply) {
-            if ( err ) throw new Error(err);
-            let fds = reply == null ? { feeds : [], channels : [] } : JSON.parse(reply);
-            if ( args[0] != null ) fds.feeds.push(args[0]);
-            Redis.set(`${msg.guild.name}/feeds`, JSON.stringify(fds), (err, res) => { if (err) throw new Error(err); })
-        }); msg.channel.send(`\`Adding feed ${ args[0] }\``)
+    add ( args, msg, Redis, fxp )  {
+            // Verif feed
+            fetch(args[0])
+                .then(res => res.text())
+                .then(body => {
+                    this.fd_parser(fxp.parse(body, {}), args[0])
+                    Redis.get(`${msg.guild.name}/feeds` , function(err, reply) {
+                        if ( err ) throw new Error(err);
+                        let fds = reply == null ? { feeds : [], channels : [] } : JSON.parse(reply);
+                        if ( args[0] != null ) fds.feeds.push(args[0]);
+                        Redis.set(`${msg.guild.name}/feeds`, JSON.stringify(fds), (err, res) => { if (err) throw new Error(err); })
+                    }); msg.channel.send(`\`Adding feed ${ args[0] }\``)
+                })
+                .catch(err => {
+                    console.error(err)
+                    msg.channel.send(`\`❌ Incorrect feed format\``)
+                })
     }
 
-    rm ( args, msg )  {
+    rm ( args, msg, Redis )  {
         Redis.get(`${msg.guild.name}/feeds` , function(err, reply) {
             if ( err ) throw new Error(err);
             let fds = reply == null ? { feeds : [], channels : [] } : JSON.parse(reply);
@@ -56,7 +80,7 @@ export default class Feeds {
         }); msg.channel.send(`\`Feed ${ args[0] } removed.\``)
     }
 
-    channel_add ( args, msg )  {
+    channel_add ( args, msg, Redis )  {
         Redis.get(`${msg.guild.name}/feeds` , function(err, reply) {
             if ( err ) throw new Error(err);
             let fds = reply == null ? { feeds : [], channels : [] } : JSON.parse(reply); 
@@ -75,7 +99,7 @@ export default class Feeds {
         }); msg.channel.send(`\`Channel ${ args[0] } removed.\``)
     }
 
-    list ( args, msg )  {
+    list ( args, msg, Redis )  {
         Redis.get(`${msg.guild.name}/feeds` , function(err, reply) {
             let res = ""
             if ( err ) throw new Error(err);
@@ -85,17 +109,13 @@ export default class Feeds {
         })
     }
 
-    list_channels ( args, msg )  {
+    list_channels ( args, msg, Redis )  {
         Redis.get(`${msg.guild.name}/feeds` , function(err, reply) {
             let res = ""
             if ( err ) throw new Error(err);
-            let fds = reply == null ? { feeds : [], channels : [] } : JSON.parse(reply); 
+            let fds = reply == null ? { feeds : [], channels : [] } : JSON.parse(reply);
             for ( let i = 0 ; i < fds.channels.length; i++ ) res += fds.channels[i] + '\n';
             msg.channel.send(`\`\`\`${ res }\`\`\``)
         })
-    }
-
-    refresh ( args, msg ) {
-        fds(); msg.channel.send('`Feeds successfully pulled !`')
     }
 }
