@@ -22,7 +22,7 @@ const Discord = new Client(),
 env.config()
 
 // load config
-const FEEDS_REFRESH = 1 // minutes
+const FEEDS_REFRESH = 0.5 // minutes
 const CLIENT_ID = process.env.CLIENT_ID
 const HELP = fs.readFileSync('README.md', {encoding:'utf8', flag:'r'})
 const PROVERBS = fs.readFileSync('proverbs.txt', {encoding:'utf8', flag:'r'}).split('\n')
@@ -37,7 +37,7 @@ Discord.on('ready', () => {
         startTimestamp : Date.now(),
         largeImageKey : "s-l640",
         smallImageKey : "small_yuuko"
-    }); //setInterval(() => fds(), 60000 * FEEDS_REFRESH)
+    }); setInterval(() => lib.feed.fds(Discord, Redis, Ent, fxp), 60000 * FEEDS_REFRESH)
 })
 
 Discord.on('message', async msg => {
@@ -48,13 +48,13 @@ Discord.on('message', async msg => {
         })
     }) 
     
+    // Redirect modules
     if (msg.content[0] == prefix) {
-        let extract = msg.content.split(' ')
-        extract[0] = extract[0].substring(prefix.length)
-        if (lib[extract[0]])
-            msg.channel.send('ok')
-        else
-            msg.channel.send(err[0])
+        try {
+            let extract = msg.content.split(' ')
+            extract[0] = extract[0].substring(prefix.length)
+            lib[extract[0]][extract[1]](extract.splice(2), msg, Redis, fxp)
+        } catch (e) { msg.channel.send(err[0]) }
     } else {}
 
 })
